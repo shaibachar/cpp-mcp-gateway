@@ -2,6 +2,8 @@
 
 cpp-mcp-gateway is a Docker-ready C++ microservice that accepts Swagger/OpenAPI 3.x definitions, generates C++ REST SDK client kits, and exposes those APIs through an MCP (Model Context Protocol) interface. It acts as a bridge between OpenAPI-driven services and MCP clients, handling registration, code generation, and runtime routing so downstream tools can call your REST endpoints via MCP.
 
+The repository includes a standalone C++17 implementation with a lightweight CLI that exercises the registration, generation queue, runtime registry, and MCP-style operation execution flows described below. The CLI mirrors the behavior expected from the REST interface and is useful for local development and testing.
+
 ## Why use this gateway?
 - **OpenAPI → MCP bridge**: Upload Swagger/OpenAPI specs and get an MCP endpoint that proxies your APIs without manual wiring.
 - **Automated C++ client generation**: Uses OpenAPI Generator (C++ REST SDK target) to produce typed client kits per spec version.
@@ -46,6 +48,30 @@ docker run \
   -v $(pwd)/clientkit:/app/clientkit \ # persist generated clients
   cpp-mcp-gateway
 ```
+
+## Building locally (CMake)
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+The `cpp-mcp-gateway` binary is produced in `build/`.
+
+## CLI usage
+The CLI provides a developer-friendly way to exercise the gateway without a running HTTP stack:
+
+```bash
+# Register a spec file under version v1 (writes to mappings/ and triggers async generation into clientkit/)
+./build/cpp-mcp-gateway register v1 /path/to/openapi.yaml
+
+# List discovered operations from generated client kits
+./build/cpp-mcp-gateway list
+
+# Execute a cached operation with a payload (simulated MCP execution)
+./build/cpp-mcp-gateway execute sayHello '{}'
+```
+
+The registration flow validates OpenAPI 3.x inputs, persists them under `mappings/<version>/`, and enqueues generation. The generation worker extracts operation IDs from the spec and writes a manifest plus a lightweight route cache under `clientkit/<version>/<spec-name>/` to be consumed by the runtime registry and MCP gateway facade.
 
 ## Development and testing checklist
 - Unit test registry management, route mapping, and MCP translation utilities.
