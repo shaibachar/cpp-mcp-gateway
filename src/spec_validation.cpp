@@ -2,8 +2,13 @@
 
 #include <algorithm>
 
+// Construct a validator with a maximum allowed payload size in bytes. Throws
+// only on allocation failures during member initialization.
 SpecValidator::SpecValidator(std::size_t max_bytes) : max_bytes_(max_bytes) {}
 
+// Validate an OpenAPI specification payload. Input: raw content string. Output:
+// ValidationResult indicating success and a message. The method is noexcept in
+// intent but may propagate standard exceptions from string operations.
 ValidationResult SpecValidator::validate(const std::string &content) const {
     if (content.empty()) {
         return {false, "Specification is empty"};
@@ -13,6 +18,7 @@ ValidationResult SpecValidator::validate(const std::string &content) const {
         return {false, "Specification exceeds maximum allowed size"};
     }
 
+    // Lowercase the content for case-insensitive checks of required markers.
     auto lowered = content;
     std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 

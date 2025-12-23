@@ -17,8 +17,13 @@ struct RegistrationResult {
 
 class RegistrationService {
   public:
+    // Construct a registration service that persists specs beneath
+    // mappings_root, validates them with the provided validator, and optionally
+    // enqueues generation work on the supplied GenerationQueue.
     RegistrationService(fs::path mappings_root, std::shared_ptr<GenerationQueue> generator, SpecValidator validator = SpecValidator());
 
+    // Persist and validate a spec for a version. On success, the spec is
+    // copied into the mappings directory and a generation task is enqueued.
     RegistrationResult register_spec(const std::string &version, const fs::path &source_path);
 
   private:
