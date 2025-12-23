@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  cpp-mcp-gateway:
+    build: .
+    image: cpp-mcp-gateway:local
+    container_name: cpp-mcp-gateway
+    volumes:
+      - ./mappings:/app/mappings
+      - ./clientkit:/app/clientkit
+    command: ["/app/build/cpp-mcp-gateway"]

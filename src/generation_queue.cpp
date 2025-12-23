@@ -6,12 +6,20 @@
 #include <fstream>
 #include <sstream>
 
+// Construct a queue that targets a client kit root directory and caps retries
+// per task. Parameters: output root path and maximum retries. Only allocation
+// failures may throw during initialization.
 GenerationQueue::GenerationQueue(fs::path clientkit_root, std::size_t max_retries)
     : clientkit_root_(std::move(clientkit_root)), max_retries_(max_retries) {}
 
+// Destructor ensures the worker is stopped. No inputs; best-effort cleanup that
+// should not throw.
 GenerationQueue::~GenerationQueue() { stop(); }
 
+// Start the worker thread. No parameters; returns void. No explicit exceptions,
+// but std::thread construction could throw.
 void GenerationQueue::start() {
+    // Start the worker thread once; subsequent calls are no-ops.
     std::lock_guard<std::mutex> lock(mutex_);
     if (running_) {
         return;
@@ -24,6 +32,7 @@ void GenerationQueue::start() {
 void GenerationQueue::stop() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        // Signal the worker to drain outstanding tasks and exit.
         stopping_ = true;
     }
     cv_.notify_all();
@@ -42,11 +51,16 @@ void GenerationQueue::enqueue(const GenerationTask &task) {
     cv_.notify_one();
 }
 
+// Block until no tasks remain in the queue or are active. No parameters;
+// returns void and should not throw under normal circumstances.
 void GenerationQueue::wait_for_idle() {
+    // Block until all queued tasks have been processed.
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [this]() { return queue_.empty() && active_ == 0; });
 }
 
+// Background worker loop that processes tasks until stop is requested. Internal
+// use only; exceptions from generation are not expected to propagate.
 void GenerationQueue::worker_loop() {
     log_info("Generation worker started");
     while (true) {
@@ -55,6 +69,7 @@ void GenerationQueue::worker_loop() {
             std::unique_lock<std::mutex> lock(mutex_);
             cv_.wait(lock, [this]() { return stopping_ || !queue_.empty(); });
             if (stopping_ && queue_.empty()) {
+                // Exit when no additional work remains.
                 break;
             }
             task = queue_.front();
@@ -74,6 +89,7 @@ void GenerationQueue::worker_loop() {
 }
 
 bool GenerationQueue::run_task_with_retries(const GenerationTask &task) {
+    // Retry transient failures with a simple linear backoff.
     for (std::size_t attempt = 1; attempt <= max_retries_; ++attempt) {
         if (generate_client_kit(task)) {
             log_info("Successfully generated client kit for version " + task.version + " on attempt " + std::to_string(attempt));
@@ -104,6 +120,7 @@ bool GenerationQueue::generate_client_kit(const GenerationTask &task) {
 
     auto operations = extract_operation_ids(task.spec_path);
     if (operations.empty()) {
+        // Fall back to a default operation so the manifest is never empty.
         operations.push_back("default_operation");
     }
 

@@ -8,6 +8,7 @@
 
 enum class LogLevel { Debug, Info, Error };
 
+// Convert a log level enum into a human-readable label.
 inline std::string log_level_label(LogLevel level) {
     switch (level) {
         case LogLevel::Debug:
@@ -20,6 +21,7 @@ inline std::string log_level_label(LogLevel level) {
     return "UNKNOWN";
 }
 
+// Produce a timestamp string in UTC suitable for prefixing log messages.
 inline std::string current_timestamp() {
     using clock = std::chrono::system_clock;
     auto now = clock::now();
@@ -30,6 +32,7 @@ inline std::string current_timestamp() {
     return oss.str();
 }
 
+// Thread-safe log sink used by the lightweight logging helpers below.
 void log_message(LogLevel level, const std::string &message);
 
 inline void log_debug(const std::string &message) { log_message(LogLevel::Debug, message); }

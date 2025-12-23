@@ -6,10 +6,19 @@
 #include <fstream>
 #include <sstream>
 
+// Build a registration service configured with a mappings directory, an
+// optional generation queue, and a validation strategy. Only allocation-related
+// exceptions are expected from member initialization.
 RegistrationService::RegistrationService(fs::path mappings_root, std::shared_ptr<GenerationQueue> generator, SpecValidator validator)
     : mappings_root_(std::move(mappings_root)), generator_(std::move(generator)), validator_(std::move(validator)) {}
 
+// Validate and persist a specification. Inputs: version string and source file
+// path. Output: RegistrationResult containing success flag, message, and stored
+// path. Explicitly avoids throwing; errors are surfaced in the result object,
+// though filesystem or allocation exceptions could still propagate.
 RegistrationResult RegistrationService::register_spec(const std::string &version, const fs::path &source_path) {
+    // Early validation ensures clear error messages before touching the
+    // filesystem.
     if (version.empty()) {
         return {false, "Version is required", {}};
     }
@@ -38,6 +47,7 @@ RegistrationResult RegistrationService::register_spec(const std::string &version
     log_info("Registered spec " + destination.string());
 
     if (generator_) {
+        // Enqueue generation asynchronously so registration returns quickly.
         generator_->enqueue({version, destination});
     }
 
