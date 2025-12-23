@@ -12,6 +12,10 @@ RUN apt-get update && \
 
 WORKDIR /app
 
+# Default logging configuration (can be overridden via environment).
+ENV GATEWAY_LOG_FILE=/app/logs/gateway.log \
+    GATEWAY_LOG_LEVEL=info
+
 # Copy source
 COPY . /app
 

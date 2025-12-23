@@ -1,4 +1,5 @@
 #include "generation_queue.h"
+#include "logging.h"
 #include "mcp_gateway.h"
 #include "registration_service.h"
 #include "runtime_registry.h"
@@ -35,8 +36,10 @@ int main() {
     auto temp_root = make_unique_temp_dir("cpp-mcp-gateway-");
     auto mappings_root = temp_root / "mappings";
     auto clientkit_root = temp_root / "clientkit";
+    auto log_path = temp_root / "test.log";
     fs::create_directories(mappings_root);
     fs::create_directories(clientkit_root);
+    init_logging(log_path.string(), spdlog::level::debug);
 
     auto generator = std::make_shared<GenerationQueue>(clientkit_root);
     generator->start();
@@ -64,6 +67,7 @@ int main() {
     auto response = gateway.execute_operation("sayHello", "{}");
     assert(response.find("sayHello") != std::string::npos);
 
+    spdlog::shutdown();  // Ensure log files are closed before cleanup on Windows.
     fs::remove_all(temp_root);
     return 0;
 }

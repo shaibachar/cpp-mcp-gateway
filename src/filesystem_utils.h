@@ -9,9 +9,9 @@ namespace fs = std::filesystem;
 // the path is a directory after the call completes.
 bool ensure_directory(const fs::path &path);
 
-// Read an entire file into a string. Returns an empty string if the file
-// cannot be opened.
-std::string read_file(const fs::path &path);
+// Read an entire file into a string with error code reporting. Returns true
+// on success, false on failure. On failure, the error code is set appropriately.
+bool read_file(const fs::path &path, std::string &content, std::error_code &ec);
 
 // Write the provided content to disk at the given path. Returns true on
 // success and logs errors on failure.

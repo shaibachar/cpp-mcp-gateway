@@ -5,6 +5,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(MSVC)
+  add_compile_options(/FS)
+endif()
+
+# Logging: fetch spdlog (header-only) for structured logging.
+include(FetchContent)
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.12.0
+)
+FetchContent_MakeAvailable(spdlog)
+
 add_library(gateway_lib
     src/logging.cpp
     src/spec_validation.cpp
@@ -17,6 +30,9 @@ add_library(gateway_lib
 
 target_include_directories(gateway_lib
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_link_libraries(gateway_lib
+    PUBLIC spdlog::spdlog_header_only
 )
 
 add_executable(cpp-mcp-gateway src/main.cpp)

@@ -105,6 +105,7 @@ bool GenerationQueue::run_task_with_retries(const GenerationTask &task) {
 }
 
 bool GenerationQueue::generate_client_kit(const GenerationTask &task) {
+    // Validate spec existence.
     if (!fs::exists(task.spec_path)) {
         log_error("Spec file missing: " + task.spec_path.string());
         return false;

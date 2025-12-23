@@ -1,40 +1,24 @@
 #pragma once
 
-#include <chrono>
-#include <iomanip>
-#include <iostream>
-#include <sstream>
+#include <spdlog/spdlog.h>
+
 #include <string>
 
-enum class LogLevel { Debug, Info, Error };
+// Centralized logger setup that reads configuration from environment variables.
+// Supported variables:
+// - GATEWAY_LOG_FILE: log file path (default: logs/gateway.log)
+// - GATEWAY_LOG_LEVEL: debug|info|warn|error (default: info)
+class SetupLogging {
+  public:
+    static void configure_from_env();
+    static spdlog::level::level_enum parse_level(const std::string &level);
+};
 
-// Convert a log level enum into a human-readable label.
-inline std::string log_level_label(LogLevel level) {
-    switch (level) {
-        case LogLevel::Debug:
-            return "DEBUG";
-        case LogLevel::Info:
-            return "INFO";
-        case LogLevel::Error:
-            return "ERROR";
-    }
-    return "UNKNOWN";
-}
+// Initialize spdlog with console and file sinks. The file will be appended.
+// Call once at startup before emitting logs.
+void init_logging(const std::string &log_file,
+                  spdlog::level::level_enum level = spdlog::level::info);
 
-// Produce a timestamp string in UTC suitable for prefixing log messages.
-inline std::string current_timestamp() {
-    using clock = std::chrono::system_clock;
-    auto now = clock::now();
-    auto time = clock::to_time_t(now);
-    auto tm = *std::localtime(&time);
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-    return oss.str();
-}
-
-// Thread-safe log sink used by the lightweight logging helpers below.
-void log_message(LogLevel level, const std::string &message);
-
-inline void log_debug(const std::string &message) { log_message(LogLevel::Debug, message); }
-inline void log_info(const std::string &message) { log_message(LogLevel::Info, message); }
-inline void log_error(const std::string &message) { log_message(LogLevel::Error, message); }
+inline void log_debug(const std::string &message) { spdlog::debug(message); }
+inline void log_info(const std::string &message) { spdlog::info(message); }
+inline void log_error(const std::string &message) { spdlog::error(message); }

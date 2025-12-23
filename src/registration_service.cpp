@@ -27,7 +27,13 @@ RegistrationResult RegistrationService::register_spec(const std::string &version
         return {false, "Spec file not found: " + source_path.string(), {}};
     }
 
-    auto content = read_file(source_path);
+    std::error_code content_ec = std::error_code{};
+    std::string content;
+    if(!read_file(source_path, content, content_ec)) {
+        log_error("Error reading spec file " + source_path.string() + ": " + content_ec.message());
+        return {false, "Failed to read spec file", {}};
+    }
+
     auto validation = validator_.validate(content);
     if (!validation.ok) {
         log_error("Validation failed for spec " + source_path.string() + ": " + validation.message);

@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
 
     fs::path mappings_root{"mappings"};
     fs::path clientkit_root{"clientkit"};
+    SetupLogging::configure_from_env();
 
     auto generator = std::make_shared<GenerationQueue>(clientkit_root);
     generator->start();
