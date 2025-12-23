@@ -11,12 +11,21 @@ endif()
 
 # Logging: fetch spdlog (header-only) for structured logging.
 include(FetchContent)
+
 FetchContent_Declare(
     spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
     GIT_TAG v1.12.0
 )
 FetchContent_MakeAvailable(spdlog)
+
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.14.0
+)
+FetchContent_MakeAvailable(googletest)
 
 add_library(gateway_lib
     src/logging.cpp
@@ -40,5 +49,5 @@ target_link_libraries(cpp-mcp-gateway PRIVATE gateway_lib)
 
 enable_testing()
 add_executable(unit_tests tests/unit_tests.cpp)
-target_link_libraries(unit_tests PRIVATE gateway_lib)
+target_link_libraries(unit_tests PRIVATE gateway_lib gtest_main)
 add_test(NAME unit_tests COMMAND unit_tests)
