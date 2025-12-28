@@ -18,6 +18,40 @@ The repository includes a standalone C++17 implementation with a lightweight CLI
 3. **Startup loader**: On service startup, the gateway scans `clientkit/`, binds generated clients to MCP-compatible interfaces, and warms an in-memory route cache.
 4. **MCP runtime**: Exposes MCP endpoints (e.g., `list_operations`, `execute_operation`) that route calls to the appropriate generated client and proxy downstream responses without normalization.
 
+```
+                +---------------------------+
+                |   OpenAPI 3.x Uploads     |
+                +-------------+-------------+
+                              |
+                              v
+                +---------------------------+
+                |  Registration API / CLI   |
+                |  writes mappings/<version>|
+                +-------------+-------------+
+                              |
+                              v
+                +---------------------------+
+                |   Async Generator Worker  |
+                |  outputs clientkit/<ver>  |
+                +-------------+-------------+
+                              |
+                              v
+                +---------------------------+
+                |   Startup Loader / Cache  |
+                +-------------+-------------+
+                              |
+                              v
+                +---------------------------+
+                |     MCP Runtime Layer     |
+                | list/execute operations   |
+                +-------------+-------------+
+                              |
+                              v
+                +---------------------------+
+                |  Downstream REST Services |
+                +---------------------------+
+```
+
 ## Directory layout
 - `mappings/`: Versioned OpenAPI uploads (e.g., `mappings/v1/`, `mappings/v2/`).
 - `clientkit/`: Generated C++ REST SDK client code produced from stored specs.
@@ -35,6 +69,9 @@ The repository includes a standalone C++17 implementation with a lightweight CLI
 - **Routing**: Requests are resolved via the in-memory cache built from discovered routes and forwarded to the downstream services defined in the original OpenAPI files.
 - **Error handling**: Downstream HTTP status codes/bodies are proxied as-is (aside from transport wrapping required by MCP).
 - **Auth**: Authentication and authorization are delegated to upstream systems; the gateway does not enforce authN/authZ.
+
+## What I would add for production
+For a production deployment, I would layer in first-class metrics (queue depth, generation latency, startup scan time, downstream call latency, and per-operation success/error rates) with a Prometheus-friendly endpoint, plus health checks that validate generator readiness, clientkit integrity, and downstream reachability. I would also add explicit backpressure controls—rate limits on registrations, bounded generation queues with clear 429/503 responses, and circuit-breaking or concurrency caps on MCP execution—so traffic spikes do not overwhelm code generation or downstream services.
 
 ## Running in Docker (example)
 ```bash

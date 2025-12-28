@@ -37,3 +37,7 @@ These guidelines describe the expected test coverage for the gateway, including 
 
 - Define and track budgets for startup scan time over `clientkit/` (e.g., ≤ 5s for 50 specs) and end-to-end MCP routing latency under typical load (e.g., p95 ≤ 200ms excluding downstream service time).
 - Include load-testing smoke cases that exercise cached vs. uncached routing paths and concurrent async generations (e.g., 5–10 parallel uploads).
+
+## What I would add for production
+
+For a production deployment, I would expand the testing guidance to include validation of metrics and health checks (e.g., scrape tests for Prometheus endpoints, synthetic health probes for generator readiness and clientkit integrity) and stress tests that exercise backpressure paths. This includes load tests that confirm registration rate limits and bounded queue behavior, plus runtime tests that verify circuit-breaker and concurrency limits are enforced under downstream failure conditions.

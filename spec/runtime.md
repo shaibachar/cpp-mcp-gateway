@@ -35,3 +35,7 @@
 - External filesystem storage should be mounted for `mappings/` (and `clientkit/` if persistence is desired) to allow sharing across instances.
 - Required mounts should be writable and owned (or chmod/chown-adjusted) for the runtime user; document expected uid/gid if non-root.
 - Base image/toolchain: use a supported Linux base (e.g., Debian/Ubuntu LTS) with OpenAPI Generator C++ REST SDK target prerequisites and a compiler/toolchain matching the generated client’s required C++ standard (e.g., C++17).
+
+## What I would add for production
+
+For a production deployment, I would add runtime-centric metrics: per-operation request counts, downstream latency and error rates, cache hit/miss rates, and startup scan duration. Health checks should validate that client kits can be loaded and that the downstream service base URLs are reachable (or at least resolve). I would also document MCP execution backpressure such as concurrency caps per operation, circuit-breaker thresholds for failing downstreams, and request timeouts that are surfaced clearly to callers.
