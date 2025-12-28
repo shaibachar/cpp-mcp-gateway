@@ -1,22 +1,30 @@
 #include "runtime_registry.h"
 
+#include <chrono>
 #include <fstream>
 #include <sstream>
 
 // Create a registry rooted at a client kit directory. The constructor stores
 // the path by value; only allocation failures could throw.
-RuntimeRegistry::RuntimeRegistry(fs::path clientkit_root) : clientkit_root_(std::move(clientkit_root)) {}
+RuntimeRegistry::RuntimeRegistry(fs::path clientkit_root, std::shared_ptr<MetricsRegistry> metrics)
+    : clientkit_root_(std::move(clientkit_root)), metrics_(std::move(metrics)) {}
 
 // Refresh the registry from disk. No parameters; repopulates the internal map
 // and logs informative messages. Returns void. Uses non-throwing filesystem
 // operations where possible, but standard library exceptions may propagate if
 // allocations fail.
 void RuntimeRegistry::load() {
+    auto start = std::chrono::steady_clock::now();
     // Clear previous state to guarantee the registry reflects the filesystem on
     // every invocation.
     operations_.clear();
     if (!fs::exists(clientkit_root_)) {
         log_info("No clientkit directory found at " + clientkit_root_.string());
+        auto end = std::chrono::steady_clock::now();
+        last_load_latency_ms_ = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        if (metrics_) {
+            metrics_->record_registry_load(last_load_latency_ms_);
+        }
         return;
     }
 
@@ -50,6 +58,11 @@ void RuntimeRegistry::load() {
         }
     }
 
+    auto end = std::chrono::steady_clock::now();
+    last_load_latency_ms_ = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    if (metrics_) {
+        metrics_->record_registry_load(last_load_latency_ms_);
+    }
     log_info("Loaded " + std::to_string(operations_.size()) + " operations from client kits");
 }
 
@@ -77,4 +90,8 @@ std::optional<OperationDescriptor> RuntimeRegistry::find_operation(const std::st
         return it->second;
     }
     return std::nullopt;
+}
+
+RuntimeRegistry::Stats RuntimeRegistry::stats() const {
+    return {operations_.size(), last_load_latency_ms_};
 }

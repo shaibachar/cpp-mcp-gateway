@@ -9,8 +9,14 @@
 // Construct a queue that targets a client kit root directory and caps retries
 // per task. Parameters: output root path and maximum retries. Only allocation
 // failures may throw during initialization.
-GenerationQueue::GenerationQueue(fs::path clientkit_root, std::size_t max_retries)
-    : clientkit_root_(std::move(clientkit_root)), max_retries_(max_retries) {}
+GenerationQueue::GenerationQueue(fs::path clientkit_root,
+                                 std::size_t max_retries,
+                                 std::size_t max_queue_size,
+                                 std::shared_ptr<MetricsRegistry> metrics)
+    : clientkit_root_(std::move(clientkit_root)),
+      max_retries_(max_retries),
+      max_queue_size_(max_queue_size),
+      metrics_(std::move(metrics)) {}
 
 // Destructor ensures the worker is stopped. No inputs; best-effort cleanup that
 // should not throw.
@@ -42,13 +48,26 @@ void GenerationQueue::stop() {
     running_ = false;
 }
 
-void GenerationQueue::enqueue(const GenerationTask &task) {
+bool GenerationQueue::enqueue(const GenerationTask &task) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        if (stopping_) {
+            return false;
+        }
+        if (queue_.size() >= max_queue_size_) {
+            if (metrics_) {
+                metrics_->record_generation_queue_full();
+            }
+            return false;
+        }
         queue_.push(task);
     }
     log_info("Queued generation for version " + task.version + " using spec " + task.spec_path.string());
+    if (metrics_) {
+        metrics_->record_generation_enqueued();
+    }
     cv_.notify_one();
+    return true;
 }
 
 // Block until no tasks remain in the queue or are active. No parameters;
@@ -57,6 +76,11 @@ void GenerationQueue::wait_for_idle() {
     // Block until all queued tasks have been processed.
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [this]() { return queue_.empty() && active_ == 0; });
+}
+
+GenerationQueue::Stats GenerationQueue::stats() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return {queue_.size(), active_, max_queue_size_, running_, stopping_};
 }
 
 // Background worker loop that processes tasks until stop is requested. Internal
@@ -89,10 +113,17 @@ void GenerationQueue::worker_loop() {
 }
 
 bool GenerationQueue::run_task_with_retries(const GenerationTask &task) {
+    auto start = std::chrono::steady_clock::now();
     // Retry transient failures with a simple linear backoff.
     for (std::size_t attempt = 1; attempt <= max_retries_; ++attempt) {
         if (generate_client_kit(task)) {
             log_info("Successfully generated client kit for version " + task.version + " on attempt " + std::to_string(attempt));
+            if (metrics_) {
+                metrics_->record_generation_success();
+                auto end = std::chrono::steady_clock::now();
+                auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                metrics_->record_generation_latency_ms(duration_ms);
+            }
             return true;
         }
 
@@ -101,6 +132,12 @@ bool GenerationQueue::run_task_with_retries(const GenerationTask &task) {
     }
 
     log_error("Exhausted retries for " + task.spec_path.string());
+    if (metrics_) {
+        metrics_->record_generation_failure();
+        auto end = std::chrono::steady_clock::now();
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        metrics_->record_generation_latency_ms(duration_ms);
+    }
     return false;
 }
 

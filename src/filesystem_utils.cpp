@@ -86,3 +86,33 @@ bool copy_file_to(const fs::path &source, const fs::path &destination)
     }
     return true;
 }
+
+bool is_writable_directory(const fs::path &path, std::string &message)
+{
+    if (!ensure_directory(path))
+    {
+        message = "Unable to create directory: " + path.string();
+        return false;
+    }
+
+    std::error_code ec;
+    if (!fs::is_directory(path, ec))
+    {
+        message = "Path is not a directory: " + path.string();
+        return false;
+    }
+
+    auto temp_path = path / ".writetest.tmp";
+    std::ofstream temp_file(temp_path, std::ios::out | std::ios::trunc);
+    if (!temp_file.is_open())
+    {
+        message = "Directory is not writable: " + path.string();
+        return false;
+    }
+    temp_file << "probe";
+    temp_file.close();
+
+    fs::remove(temp_path, ec);
+    message.clear();
+    return true;
+}

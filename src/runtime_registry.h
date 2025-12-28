@@ -1,9 +1,11 @@
 #pragma once
 
 #include "logging.h"
+#include "metrics.h"
 
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -25,7 +27,7 @@ class RuntimeRegistry {
     // Initialize a registry rooted at clientkit_root where generated client
     // kits are stored on disk. The registry can be reloaded multiple times to
     // pick up new kits without restarting the process.
-    explicit RuntimeRegistry(fs::path clientkit_root);
+    explicit RuntimeRegistry(fs::path clientkit_root, std::shared_ptr<MetricsRegistry> metrics = nullptr);
 
     // Scan the client kit directory and rebuild the in-memory operation map.
     // The method is idempotent and safe to call before every operation lookup.
@@ -39,7 +41,16 @@ class RuntimeRegistry {
     // so callers can branch on existence without throwing.
     std::optional<OperationDescriptor> find_operation(const std::string &operation_id) const;
 
+    struct Stats {
+        std::size_t operation_count{0};
+        long long last_load_latency_ms{0};
+    };
+
+    Stats stats() const;
+
   private:
     fs::path clientkit_root_;
     std::map<std::string, OperationDescriptor> operations_;
+    std::shared_ptr<MetricsRegistry> metrics_;
+    long long last_load_latency_ms_{0};
 };
