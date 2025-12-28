@@ -29,6 +29,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_library(gateway_lib
     src/logging.cpp
+    src/metrics.cpp
     src/spec_validation.cpp
     src/filesystem_utils.cpp
     src/generation_queue.cpp

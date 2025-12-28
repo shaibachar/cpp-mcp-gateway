@@ -24,3 +24,7 @@
 - Generated C++ client code for the API appears in `clientkit/`.
 - The registry of available APIs is refreshed on the next server load.
 - Overwrites are allowed; newer uploads replace existing files but take effect only after a server restart or new instance startup.
+
+## What I would add for production
+
+For a production deployment, I would add registration-focused metrics and controls: counters for uploads by version, validation failures, and generator enqueue results, plus latency histograms for upload/validation time. Health checks should confirm the generator binary is available and that `mappings/<version>/` is writable. I would also document registration-specific backpressure (request size limits, rate limits, and a bounded enqueue queue that returns clear 429/503 responses when saturated).

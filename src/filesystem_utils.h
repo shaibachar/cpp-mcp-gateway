@@ -20,3 +20,8 @@ bool write_file(const fs::path &path, const std::string &content);
 // Copy a file to the destination path, creating parent directories as needed.
 // Overwrites existing files and logs errors on failure.
 bool copy_file_to(const fs::path &source, const fs::path &destination);
+
+// Check whether a directory exists (or can be created) and is writable by
+// attempting to create a temporary file within it. Returns true on success
+// and sets a descriptive message on failure.
+bool is_writable_directory(const fs::path &path, std::string &message);

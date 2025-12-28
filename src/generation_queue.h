@@ -1,9 +1,11 @@
 #pragma once
 
 #include "logging.h"
+#include "metrics.h"
 
 #include <condition_variable>
 #include <filesystem>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <queue>
@@ -28,7 +30,10 @@ class GenerationQueue {
   public:
     // Initialize a queue that writes client kits under clientkit_root. The
     // worker thread will retry failed generation attempts up to max_retries.
-    GenerationQueue(fs::path clientkit_root, std::size_t max_retries = 3);
+    GenerationQueue(fs::path clientkit_root,
+                    std::size_t max_retries = 3,
+                    std::size_t max_queue_size = 32,
+                    std::shared_ptr<MetricsRegistry> metrics = nullptr);
     ~GenerationQueue();
 
     // Start the background worker thread. Safe to call multiple times; the
@@ -41,11 +46,21 @@ class GenerationQueue {
 
     // Enqueue a new generation task with the target version and spec path. The
     // worker thread consumes tasks in FIFO order.
-    void enqueue(const GenerationTask &task);
+    bool enqueue(const GenerationTask &task);
 
     // Block the caller until the queue is empty and no tasks are active. Useful
     // for graceful shutdowns in tests or CLI flows.
     void wait_for_idle();
+
+    struct Stats {
+        std::size_t queue_depth{0};
+        std::size_t active{0};
+        std::size_t max_queue_size{0};
+        bool running{false};
+        bool stopping{false};
+    };
+
+    Stats stats() const;
 
   private:
     // Main worker loop that consumes tasks until stop is requested.
@@ -66,11 +81,13 @@ class GenerationQueue {
 
     fs::path clientkit_root_;
     std::size_t max_retries_;
+    std::size_t max_queue_size_;
     std::queue<GenerationTask> queue_;
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::condition_variable cv_;
     bool running_{false};
     bool stopping_{false};
     std::thread worker_;
     std::size_t active_{0};
+    std::shared_ptr<MetricsRegistry> metrics_;
 };

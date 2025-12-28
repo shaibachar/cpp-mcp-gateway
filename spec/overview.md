@@ -28,3 +28,7 @@ cpp-mcp-gateway is a gateway service that accepts OpenAPI (Swagger) definitions,
 - `mappings/`: Holds uploaded OpenAPI files organized by version (e.g., `mappings/v1/`).
 - `clientkit/`: Contains generated C++ client code produced from the stored Swagger/OpenAPI files.
 - `spec/`: Houses project specifications and operational notes.
+
+## What I would add for production
+
+For a production deployment, I would add a dedicated observability and resilience section in the overview: a Prometheus-friendly metrics endpoint covering registration volume, generator queue depth, startup scan duration, and MCP execution latency, along with health checks that validate generator toolchain availability and on-disk state for `mappings/` and `clientkit/`. I would also document global backpressure policies (registration rate limits, bounded async queues, and MCP execution concurrency limits) as first-class operational guardrails.
